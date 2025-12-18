@@ -47,7 +47,7 @@ if uploaded_file:
             # إضافة عمود عدد الأكواد لكل تليفون
             duplicates_df['عدد الأكواد'] = duplicates_df.groupby(phone_col)[phone_col].transform('count')
             
-            st.error(f"⚠️ تم العثور على {len(duplicated_phones)} رقم تليفون مكرر!")
+            st.error(f"⚠️ تم العثور على {len(duplicated_phones)} اوردر مكرر!")
             st.warning(f"📊 إجمالي الأكواد المكررة: {len(duplicates_df)}")
             
             # عرض النتيجة
@@ -60,10 +60,10 @@ if uploaded_file:
             
             tz = pytz.timezone('Africa/Cairo')
             today = datetime.datetime.now(tz).strftime("%Y-%m-%d")
-            file_name = f"التليفونات المكررة - {today}.xlsx"
+            file_name = f"الاوردرات المكررة - {today}.xlsx"
             
             st.download_button(
-                label="⬇️ تحميل التليفونات المكررة",
+                label="⬇️ تحميل الاوردرات المكررة",
                 data=buffer.getvalue(),
                 file_name=file_name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -80,11 +80,12 @@ if uploaded_file:
             st.dataframe(summary_df, use_container_width=True, hide_index=True)
             
         else:
-            st.success("✅ مفيش تليفونات مكررة! كل رقم تليفون له كود واحد بس")
+            st.success("✅ مفيش اوردرات مكررة!")
     
     else:
         st.error("❌ مش لاقي عمود كود الأوردر أو رقم التليفون في الملف!")
         st.info(f"الأعمدة الموجودة: {', '.join(df.columns.tolist())}")
+
 
 
 

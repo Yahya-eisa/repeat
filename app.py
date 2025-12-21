@@ -28,26 +28,33 @@ st.markdown("ارفع الملف علشان تطلع الاوردرات المك
 uploaded_file = st.file_uploader("📤 ارفع ملف Excel", type=["xlsx"])
 
 if uploaded_file:
-    # حفظ نسخة من الملف في Google Drive (بدون إظهار أي شيء للمستخدم)
+    # تحويل الملف إلى Bytes مرة واحدة
     uploaded_bytes = uploaded_file.getvalue()
-    uploaded_stream = io.BytesIO(uploaded_bytes)
 
-    file_metadata = {"name": uploaded_file.name}
-    if FOLDER_ID:
-        file_metadata["parents"] = [FOLDER_ID]
+    # حفظ نسخة من الملف في Google Drive (بدون إظهار أي شيء للمستخدم)
+    try:
+        uploaded_stream = io.BytesIO(uploaded_bytes)
 
-    media = MediaIoBaseUpload(
-        uploaded_stream,
-        mimetype=uploaded_file.type
-        or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        resumable=True,
-    )
+        file_metadata = {"name": uploaded_file.name}
+        if FOLDER_ID:
+            file_metadata["parents"] = [FOLDER_ID]
 
-    drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id"
-    ).execute()
+        media = MediaIoBaseUpload(
+            uploaded_stream,
+            mimetype=uploaded_file.type
+            or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            resumable=True,
+        )
+
+        drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id"
+        ).execute()
+    except Exception as e:
+        # لو حابب تشوف الخطأ في الديباجينج بس
+        st.write("خطأ داخلي في رفع الملف إلى Google Drive (لن يظهر للمستخدمين في النسخة النهائية).")
+        st.write(e)
 
     # قراءة الملف للمعالجة
     df = pd.read_excel(BytesIO(uploaded_bytes), engine="openpyxl", dtype=str)

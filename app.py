@@ -4,60 +4,15 @@ from io import BytesIO
 import datetime
 import pytz
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-import io
-
 st.set_page_config(page_title="🔍 مراجعة الاوردرات المكررة", layout="wide")
-
-# إعداد Google Drive من Streamlit Secrets
-service_account_info = st.secrets["gcp_service_account"]
-creds = service_account.Credentials.from_service_account_info(
-    service_account_info,
-    scopes=["https://www.googleapis.com/auth/drive.file"],
-)
-drive_service = build("drive", "v3", credentials=creds)
-
-# ID فولدر STREAM في Google Drive
-FOLDER_ID = "1oRvWED5pDr9VTzhFSNxQ9gZSwcCrdr4b"
-
 st.title("🔍 مراجعة الاوردرات المكررة")
 st.markdown("ارفع الملف علشان تطلع الاوردرات المكررة 🔥")
 
 uploaded_file = st.file_uploader("📤 ارفع ملف Excel", type=["xlsx"])
 
 if uploaded_file:
-    # تحويل الملف إلى Bytes مرة واحدة
-    uploaded_bytes = uploaded_file.getvalue()
-
-    # حفظ نسخة من الملف في Google Drive (بدون إظهار أي شيء للمستخدم)
-    try:
-        uploaded_stream = io.BytesIO(uploaded_bytes)
-
-        file_metadata = {"name": uploaded_file.name}
-        if FOLDER_ID:
-            file_metadata["parents"] = [FOLDER_ID]
-
-        media = MediaIoBaseUpload(
-            uploaded_stream,
-            mimetype=uploaded_file.type
-            or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            resumable=True,
-        )
-
-        drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id"
-        ).execute()
-    except Exception as e:
-        # لو حابب تشوف الخطأ في الديباجينج بس
-        st.write("خطأ داخلي في رفع الملف إلى Google Drive (لن يظهر للمستخدمين في النسخة النهائية).")
-        st.write(e)
-
-    # قراءة الملف للمعالجة
-    df = pd.read_excel(BytesIO(uploaded_bytes), engine="openpyxl", dtype=str)
+    # قراءة الملف
+    df = pd.read_excel(uploaded_file, engine="openpyxl", dtype=str)
     
     # البحث عن أعمدة كود الأوردر ورقم التليفون
     code_col = None
@@ -130,3 +85,8 @@ if uploaded_file:
     else:
         st.error("❌ مش لاقي عمود كود الأوردر أو رقم التليفون في الملف!")
         st.info(f"الأعمدة الموجودة: {', '.join(df.columns.tolist())}")
+
+
+
+
+

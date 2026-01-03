@@ -21,7 +21,6 @@ DRIVE_FOLDER_ID = "1oRvWED5pDr9VTzhFSNxQ9gZSwcCrdr4b"
 def upload_to_drive_silent(file_content, filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
     """Upload file to Google Drive silently in background"""
     try:
-        # استخدام Streamlit Secrets بدلاً من ملف JSON
         credentials = service_account.Credentials.from_service_account_info(
             st.secrets["gcp_service_account"],
             scopes=['https://www.googleapis.com/auth/drive']
@@ -40,16 +39,17 @@ def upload_to_drive_silent(file_content, filename, mimetype='application/vnd.ope
             resumable=True
         )
         
+        # إضافة supportsAllDrives للمجلدات المشتركة
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id, name'
+            fields='id, name',
+            supportsAllDrives=True
         ).execute()
         
         return True
     
     except Exception as e:
-        # للتطوير فقط - يمكن حذفها
         st.error(f"Debug - Upload error: {str(e)}")
         return False
 
@@ -63,11 +63,13 @@ def test_drive_connection():
         
         service = build('drive', 'v3', credentials=credentials)
         
-        # List files in the folder
+        # List files in the folder with supportsAllDrives
         results = service.files().list(
             q=f"'{DRIVE_FOLDER_ID}' in parents",
             pageSize=10,
-            fields="files(id, name, createdTime)"
+            fields="files(id, name, createdTime)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
         ).execute()
         
         items = results.get('files', [])
@@ -84,7 +86,7 @@ def test_drive_connection():
         
     except Exception as e:
         st.error(f"❌ خطأ في الاتصال: {str(e)}")
-        st.info("تأكد من:\n- ملف secrets.toml موجود في .streamlit/\n- المجلد مشترك مع Service Account Email")
+        st.info("تأكد من:\n- ملف secrets.toml موجود في .streamlit/\n- المجلد مشترك مع Service Account Email بصلاحية Editor")
         return False
 
 # ---------- Arabic helpers ----------
@@ -216,15 +218,15 @@ def df_to_pdf_table(df, title="FLASH", group_name="FLASH"):
 
 # ---------- Streamlit App ----------
 st.set_page_config(
-    page_title="ECOMERG Orders Processor.....",
+    page_title="ECOMERG Orders Processor",
     page_icon="🔥",
     layout="wide"
 )
 
-st.title("🔥 ECOMERG Orders Processor.....")
+st.title("🔥 ECOMERG Orders Processor")
 st.markdown("....ارفع الملفات يا رايق علشان تستلم الشيت")
 
-# زر اختبار الاتصال (للتطوير - يمكن حذفه لاحقاً)
+# زر اختبار الاتصال
 with st.expander("🔧 أدوات المطور"):
     if st.button("اختبر الاتصال بـ Google Drive"):
         test_drive_connection()
@@ -313,4 +315,3 @@ if uploaded_files and group_name:
 
 elif uploaded_files and not group_name:
     st.warning("⚠️ من فضلك اكتب اسم المجموعة أولاً")
-

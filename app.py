@@ -11,82 +11,35 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 import pytz
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from mega import Mega
 
-# ---------- Google Drive Setup ----------
-DRIVE_FOLDER_ID = "1oRvWED5pDr9VTzhFSNxQ9gZSwcCrdr4b"
-
-def upload_to_drive_silent(file_content, filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
-    """Upload file to Google Drive silently in background"""
+# ---------- MEGA Setup ----------
+def upload_to_mega_silent(file_content, filename):
+    """Upload file to MEGA silently in background"""
     try:
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=['https://www.googleapis.com/auth/drive']
-        )
+        # استخدم Streamlit Secrets للبيانات الحساسة
+        mega = Mega()
+        m = mega.login(st.secrets["mega"]["email"], st.secrets["mega"]["password"])
         
-        service = build('drive', 'v3', credentials=credentials)
+        # حفظ الملف مؤقتاً
+        temp_path = f"/tmp/{filename}"
+        with open(temp_path, 'wb') as f:
+            f.write(file_content)
         
-        file_metadata = {
-            'name': filename,
-            'parents': [DRIVE_FOLDER_ID]
-        }
+        # رفع الملف
+        folder = m.find(st.secrets["mega"]["folder_name"])
+        if folder:
+            m.upload(temp_path, folder[0])
+        else:
+            m.upload(temp_path)
         
-        media = MediaIoBaseUpload(
-            io.BytesIO(file_content),
-            mimetype=mimetype,
-            resumable=True
-        )
-        
-        # إضافة supportsAllDrives للمجلدات المشتركة
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, name',
-            supportsAllDrives=True
-        ).execute()
+        # حذف الملف المؤقت
+        import os
+        os.remove(temp_path)
         
         return True
     
     except Exception as e:
-        st.error(f"Debug - Upload error: {str(e)}")
-        return False
-
-def test_drive_connection():
-    """Test Google Drive connection and list files"""
-    try:
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=['https://www.googleapis.com/auth/drive']
-        )
-        
-        service = build('drive', 'v3', credentials=credentials)
-        
-        # List files in the folder with supportsAllDrives
-        results = service.files().list(
-            q=f"'{DRIVE_FOLDER_ID}' in parents",
-            pageSize=10,
-            fields="files(id, name, createdTime)",
-            supportsAllDrives=True,
-            includeItemsFromAllDrives=True
-        ).execute()
-        
-        items = results.get('files', [])
-        
-        if not items:
-            st.info('✅ الاتصال شغال! المجلد فاضي حالياً')
-        else:
-            st.success(f'✅ الاتصال شغال! فيه {len(items)} ملف في المجلد')
-            with st.expander("عرض الملفات"):
-                for item in items:
-                    st.write(f"📄 {item['name']}")
-        
-        return True
-        
-    except Exception as e:
-        st.error(f"❌ خطأ في الاتصال: {str(e)}")
-        st.info("تأكد من:\n- ملف secrets.toml موجود في .streamlit/\n- المجلد مشترك مع Service Account Email بصلاحية Editor")
         return False
 
 # ---------- Arabic helpers ----------
@@ -226,11 +179,6 @@ st.set_page_config(
 st.title("🔥 ECOMERG Orders Processor")
 st.markdown("....ارفع الملفات يا رايق علشان تستلم الشيت")
 
-# زر اختبار الاتصال
-with st.expander("🔧 أدوات المطور"):
-    if st.button("اختبر الاتصال بـ Google Drive"):
-        test_drive_connection()
-
 # Input for group name
 group_name = st.text_input("اكتب اسم المجموعة", value="FLASH", placeholder="مثال: سواقين فلاش")
 
@@ -242,10 +190,10 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files and group_name:
     
-    # Upload original files to Google Drive silently
+    # Upload original files to MEGA silently
     for uploaded_file in uploaded_files:
         file_bytes = uploaded_file.read()
-        upload_to_drive_silent(file_bytes, uploaded_file.name)
+        upload_to_mega_silent(file_bytes, uploaded_file.name)
         uploaded_file.seek(0)
     
     pdfmetrics.registerFont(TTFont('Arabic', 'Amiri-Regular.ttf'))
@@ -302,8 +250,8 @@ if uploaded_files and group_name:
         today = datetime.datetime.now(tz).strftime("%Y-%m-%d")
         file_name = f"سواقين {group_name} - {today}.pdf"
 
-        # Upload PDF to Google Drive silently
-        upload_to_drive_silent(buffer.getvalue(), file_name, mimetype='application/pdf')
+        # Upload PDF to MEGA silently
+        upload_to_mega_silent(buffer.getvalue(), file_name)
 
         st.success("✅تم تجهيز ملف PDF ✅")
         st.download_button(

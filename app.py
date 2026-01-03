@@ -216,12 +216,12 @@ def df_to_pdf_table(df, title="FLASH", group_name="FLASH"):
 
 # ---------- Streamlit App ----------
 st.set_page_config(
-    page_title="ECOMERG Orders Processor",
+    page_title="ECOMERG Orders Processor.....",
     page_icon="🔥",
     layout="wide"
 )
 
-st.title("🔥 ECOMERG Orders Processor")
+st.title("🔥 ECOMERG Orders Processor.....")
 st.markdown("....ارفع الملفات يا رايق علشان تستلم الشيت")
 
 # زر اختبار الاتصال (للتطوير - يمكن حذفه لاحقاً)
@@ -313,3 +313,4 @@ if uploaded_files and group_name:
 
 elif uploaded_files and not group_name:
     st.warning("⚠️ من فضلك اكتب اسم المجموعة أولاً")
+

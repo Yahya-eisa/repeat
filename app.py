@@ -21,11 +21,11 @@ DRIVE_FOLDER_ID = "1oRvWED5pDr9VTzhFSNxQ9gZSwcCrdr4b"
 def upload_to_drive_silent(file_content, filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
     """Upload file to Google Drive silently in background"""
     try:
-        SCOPES = ['https://www.googleapis.com/auth/drive.file']
-        SERVICE_ACCOUNT_FILE = 'service-account.json'
-        
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        # استخدام Streamlit Secrets بدلاً من ملف JSON
+        credentials = service_account.Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
         
         service = build('drive', 'v3', credentials=credentials)
         
@@ -43,12 +43,48 @@ def upload_to_drive_silent(file_content, filename, mimetype='application/vnd.ope
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id, name'
         ).execute()
         
         return True
     
     except Exception as e:
+        # للتطوير فقط - يمكن حذفها
+        st.error(f"Debug - Upload error: {str(e)}")
+        return False
+
+def test_drive_connection():
+    """Test Google Drive connection and list files"""
+    try:
+        credentials = service_account.Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
+        
+        service = build('drive', 'v3', credentials=credentials)
+        
+        # List files in the folder
+        results = service.files().list(
+            q=f"'{DRIVE_FOLDER_ID}' in parents",
+            pageSize=10,
+            fields="files(id, name, createdTime)"
+        ).execute()
+        
+        items = results.get('files', [])
+        
+        if not items:
+            st.info('✅ الاتصال شغال! المجلد فاضي حالياً')
+        else:
+            st.success(f'✅ الاتصال شغال! فيه {len(items)} ملف في المجلد')
+            with st.expander("عرض الملفات"):
+                for item in items:
+                    st.write(f"📄 {item['name']}")
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ خطأ في الاتصال: {str(e)}")
+        st.info("تأكد من:\n- ملف secrets.toml موجود في .streamlit/\n- المجلد مشترك مع Service Account Email")
         return False
 
 # ---------- Arabic helpers ----------
@@ -188,6 +224,11 @@ st.set_page_config(
 st.title("🔥 ECOMERG Orders Processor")
 st.markdown("....ارفع الملفات يا رايق علشان تستلم الشيت")
 
+# زر اختبار الاتصال (للتطوير - يمكن حذفه لاحقاً)
+with st.expander("🔧 أدوات المطور"):
+    if st.button("اختبر الاتصال بـ Google Drive"):
+        test_drive_connection()
+
 # Input for group name
 group_name = st.text_input("اكتب اسم المجموعة", value="FLASH", placeholder="مثال: سواقين فلاش")
 
@@ -272,4 +313,3 @@ if uploaded_files and group_name:
 
 elif uploaded_files and not group_name:
     st.warning("⚠️ من فضلك اكتب اسم المجموعة أولاً")
-

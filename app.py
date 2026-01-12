@@ -11,36 +11,6 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 import pytz
-from mega import Mega
-
-# ---------- MEGA Setup ----------
-def upload_to_mega_silent(file_content, filename):
-    """Upload file to MEGA silently in background"""
-    try:
-        # استخدم Streamlit Secrets للبيانات الحساسة
-        mega = Mega()
-        m = mega.login(st.secrets["mega"]["email"], st.secrets["mega"]["password"])
-        
-        # حفظ الملف مؤقتاً
-        temp_path = f"/tmp/{filename}"
-        with open(temp_path, 'wb') as f:
-            f.write(file_content)
-        
-        # رفع الملف
-        folder = m.find(st.secrets["mega"]["folder_name"])
-        if folder:
-            m.upload(temp_path, folder[0])
-        else:
-            m.upload(temp_path)
-        
-        # حذف الملف المؤقت
-        import os
-        os.remove(temp_path)
-        
-        return True
-    
-    except Exception as e:
-        return False
 
 # ---------- Arabic helpers ----------
 def fix_arabic(text):
@@ -190,12 +160,6 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files and group_name:
     
-    # Upload original files to MEGA silently
-    for uploaded_file in uploaded_files:
-        file_bytes = uploaded_file.read()
-        upload_to_mega_silent(file_bytes, uploaded_file.name)
-        uploaded_file.seek(0)
-    
     pdfmetrics.registerFont(TTFont('Arabic', 'Amiri-Regular.ttf'))
     pdfmetrics.registerFont(TTFont('Arabic-Bold', 'Amiri-Bold.ttf'))
 
@@ -249,9 +213,6 @@ if uploaded_files and group_name:
         tz = pytz.timezone('Africa/Cairo')
         today = datetime.datetime.now(tz).strftime("%Y-%m-%d")
         file_name = f"سواقين {group_name} - {today}.pdf"
-
-        # Upload PDF to MEGA silently
-        upload_to_mega_silent(buffer.getvalue(), file_name)
 
         st.success("✅تم تجهيز ملف PDF ✅")
         st.download_button(
